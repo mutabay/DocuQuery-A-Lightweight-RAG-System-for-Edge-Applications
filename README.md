@@ -16,15 +16,6 @@ Long documents often hide critical information. Manuals, research papers, or cha
 
 ---
 
-## 👤 Who Should Use This?
-
-- 📚 Students & researchers managing multiple papers
-- 👨‍💻 Developers working with dense API docs or specs
-- 🧑‍💼 Freelancers and teams valuing privacy in document Q&A
-- 🛠️ Offline-first users needing zero dependency on cloud LLMs
-
----
-
 ## 🧠 Why Local / Edge?
 
 - No internet? Still usable.
