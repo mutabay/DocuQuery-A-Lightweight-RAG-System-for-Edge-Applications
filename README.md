@@ -12,69 +12,71 @@ Built with **Rust** for performance and **Python** for vector search, DocuQuery 
 
 ```mermaid
 flowchart LR
-    subgraph Client
-        U[User]
+    User([Client])
+
+    subgraph Axum["Rust Axum · :8000"]
+        Upload[/upload]
+        Query[/query]
+        Ask[/ask]
     end
 
-    subgraph Rust["Rust - Axum :8000"]
-        R1[POST /upload]
-        R2[POST /query]
-        R3[POST /ask]
-        Chunk[Chunking Engine]
+    subgraph Ollama["Ollama · :11434"]
+        Embed["nomic-embed-text"]
+        LLM["llama3.2"]
     end
 
-    subgraph OllamaService["Ollama :11434"]
-        EMB[nomic-embed-text]
-        LLM[llama3.2]
+    subgraph FAISS["FastAPI · :8001"]
+        Index[(FAISS Index)]
     end
 
-    subgraph Python["Python - FastAPI :8001"]
-        FAISS[(FAISS Index)]
-    end
-
-    U -- "upload file" --> R1
-    R1 --> Chunk --> EMB --> FAISS
-    U -- "ask question" --> R3
-    R3 --> EMB
-    EMB --> FAISS
-    FAISS -- "top-k chunks" --> LLM
-    LLM -- "answer" --> R3
-    U -- "raw search" --> R2
-    R2 --> EMB
-    EMB --> FAISS
-    FAISS -- "chunks" --> R2
+    User --> Axum
+    Axum -- "embed text" --> Embed
+    Axum -- "add / search" --> Index
+    Axum -- "generate answer" --> LLM
 ```
 
 ---
 
 ## RAG Pipeline
 
+**Ingestion** (`POST /upload`)
+
 ```mermaid
 sequenceDiagram
     actor User
-    participant Axum as Rust Axum
-    participant Ollama as Ollama
-    participant FAISS as FAISS Server
+    participant Axum as Axum :8000
+    participant Ollama as Ollama :11434
+    participant FAISS as FAISS :8001
 
-    Note over User, FAISS: 1 - Document Ingestion
     User->>Axum: POST /upload (multipart file)
-    Axum->>Axum: Save file & split into chunks
-    loop Each chunk
-        Axum->>Ollama: Embed chunk (nomic-embed-text)
-        Ollama-->>Axum: 768-dim vector
-        Axum->>FAISS: Store vector + text metadata
+    Axum->>Axum: save to disk, read text, split into chunks
+    loop for each chunk
+        Axum->>Ollama: POST /api/embeddings {chunk}
+        Ollama-->>Axum: float[768]
+        Axum->>FAISS: POST /add {vector, chunk_text}
+        FAISS-->>Axum: ok
     end
-    Axum-->>User: File processed
+    Axum-->>User: 200 file processed
+```
 
-    Note over User, FAISS: 2 - Question Answering
-    User->>Axum: POST /ask { question }
-    Axum->>Ollama: Embed question
-    Ollama-->>Axum: 768-dim vector
-    Axum->>FAISS: Search top-k similar chunks
-    FAISS-->>Axum: Relevant text chunks
-    Axum->>Ollama: Prompt LLM with context + question
-    Ollama-->>Axum: Generated answer
-    Axum-->>User: Answer grounded in your documents
+**Question answering** (`POST /ask`)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Axum as Axum :8000
+    participant Ollama as Ollama :11434
+    participant FAISS as FAISS :8001
+
+    User->>Axum: POST /ask {question}
+    Axum->>Ollama: POST /api/embeddings {question}
+    Ollama-->>Axum: float[768]
+    Axum->>FAISS: POST /search {vector, k=3}
+    FAISS-->>Axum: top-3 text chunks
+    Axum->>Axum: build prompt (chunks + question)
+    Axum->>Ollama: POST /api/generate {prompt}
+    Ollama-->>Axum: streamed response
+    Axum-->>User: 200 answer
 ```
 
 ---
@@ -270,20 +272,20 @@ curl -X POST http://localhost:8000/ask \
 
 ```mermaid
 flowchart TD
-    A[Upload Document] --> B[Read & Save File]
-    B --> C[Split into Chunks ~500 chars]
-    C --> D[Generate Embeddings via Ollama]
-    D --> E[Store in FAISS Vector Index]
+    subgraph Ingestion["POST /upload"]
+        A[Receive file] --> B[Save to uploads/]
+        B --> C[Split text into ~500-char chunks]
+        C --> D[Embed each chunk via Ollama]
+        D --> E[Store vector + text in FAISS]
+    end
 
-    F[User Asks Question] --> G[Embed Question via Ollama]
-    G --> H[Search FAISS for Top-K Chunks]
-    H --> I[Build Prompt: Context + Question]
-    I --> J[Send to LLM via Ollama]
-    J --> K[Return Answer to User]
-
-    style A fill:#4CAF50,color:#fff
-    style F fill:#2196F3,color:#fff
-    style K fill:#FF9800,color:#fff
+    subgraph Retrieval["POST /ask"]
+        F[Receive question] --> G[Embed question via Ollama]
+        G --> H[Search FAISS for top-3 chunks]
+        H --> I[Build prompt with retrieved context]
+        I --> J[Send prompt to LLM via Ollama]
+        J --> K[Return generated answer]
+    end
 ```
 
 ---
