@@ -1,0 +1,65 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: docuquery-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: docuquery-ollama-init
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "ollama pull nomic-embed-text && ollama pull llama3.2"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+
+  faiss:
+    build:
+      context: ./faiss_server
+      dockerfile: Dockerfile
+    container_name: docuquery-faiss
+    ports:
+      - "8001:8001"
+    volumes:
+      - faiss_data:/app/index_store
+    environment:
+      - DIM=768
+      - INDEX_FILE=index_store/index.faiss
+      - META_FILE=index_store/metadata.json
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: docuquery-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      ollama:
+        condition: service_healthy
+      faiss:
+        condition: service_started
+    environment:
+      - OLLAMA_EMBEDDING_URL=http://ollama:11434/api/embeddings
+      - OLLAMA_EMBEDDING_MODEL=nomic-embed-text
+      - OLLAMA_LLM_URL=http://ollama:11434/api/generate
+      - OLLAMA_LLM_MODEL=llama3.2
+      - FAISS_ADD_URL=http://faiss:8001/add
+      - FAISS_SEARCH_URL=http://faiss:8001/search
+
+volumes:
+  ollama_data:
+  faiss_data:
+  uploads_data:

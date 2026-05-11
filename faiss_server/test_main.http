@@ -1,11 +1,41 @@
-# Test your FastAPI endpoints
+# === DocuQuery API Tests ===
 
+### Health Check
 GET http://127.0.0.1:8000/
 Accept: application/json
 
 ###
 
-GET http://127.0.0.1:8000/hello/User
-Accept: application/json
+### Upload a document (use form-data in Postman/curl)
+# curl -X POST http://localhost:8000/upload -F "file=@uploads/abc.txt"
 
 ###
+
+### Query - Retrieve relevant chunks from FAISS
+POST http://127.0.0.1:8000/query
+Content-Type: application/json
+
+{
+  "question": "What programming languages does the author want to learn?"
+}
+
+###
+
+### Ask - Full RAG pipeline (embed → search → LLM answer)
+POST http://127.0.0.1:8000/ask
+Content-Type: application/json
+
+{
+  "question": "What programming languages does the author want to learn?"
+}
+
+###
+
+### FAISS Server - Direct search
+POST http://127.0.0.1:8001/search
+Content-Type: application/json
+
+{
+  "query_vector": [],
+  "k": 3
+}

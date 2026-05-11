@@ -1,0 +1,7 @@
+target/
+faiss_server/
+uploads/
+.env
+.git/
+diagrams/
+*.md

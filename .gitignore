@@ -1,2 +1,7 @@
 /target
 .env
+faiss_server/venv/
+faiss_server/__pycache__/
+uploads/*.txt
+uploads/*.md
+!uploads/.gitkeep

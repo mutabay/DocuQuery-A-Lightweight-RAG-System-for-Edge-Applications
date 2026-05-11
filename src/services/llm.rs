@@ -17,7 +17,7 @@ struct LlmChunk {
 pub async fn ask_llm(prompt: &str) -> Result<String, reqwest::Error> {
     let client = Client::new();
 
-    let model = env::var("OLLAMA_LLM_MODEL").unwrap_or_else(|_| "llama3.2".to_string());
+    let model = env::var("OLLAMA_LLM_MODEL").unwrap_or_else(|_| "llama3.1:8b".to_string());
     let url = env::var("OLLAMA_LLM_URL").unwrap_or_else(|_| "http://localhost:11434/api/generate".to_string());
 
     let req_body = LlmRequest {
