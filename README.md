@@ -14,25 +14,25 @@ Built with **Rust** for performance and **Python** for vector search, DocuQuery 
 flowchart LR
     User([Client])
 
-    subgraph Axum["Rust Axum · :8000"]
-        Upload[/upload]
-        Query[/query]
-        Ask[/ask]
+    subgraph Axum
+        Upload[/upload/]
+        Query[/query/]
+        Ask[/ask/]
     end
 
-    subgraph Ollama["Ollama · :11434"]
+    subgraph Ollama
         Embed["nomic-embed-text"]
         LLM["llama3.2"]
     end
 
-    subgraph FAISS["FastAPI · :8001"]
+    subgraph FAISS
         Index[(FAISS Index)]
     end
 
     User --> Axum
-    Axum -- "embed text" --> Embed
-    Axum -- "add / search" --> Index
-    Axum -- "generate answer" --> LLM
+    Axum -->|embed text| Embed
+    Axum -->|add / search| Index
+    Axum -->|generate answer| LLM
 ```
 
 ---
@@ -269,6 +269,8 @@ curl -X POST http://localhost:8000/ask \
 ---
 
 ## How It Works
+
+**FAISS in brief:** uploaded text is split into ~500-character chunks. Each chunk becomes a 768-dimensional embedding via `nomic-embed-text`; FAISS stores those vectors and returns the nearest chunks when a question vector is searched.
 
 ```mermaid
 flowchart TD

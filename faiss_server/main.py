@@ -60,12 +60,15 @@ def add(item: AddItem):
 
 @app.post("/search")
 def search(query: SearchQuery):
+    if index.ntotal == 0 or not metadata:
+        return { "results": [] }
+
     vectors = np.array([query.query_vector], dtype="float32")
     D, I = index.search(vectors, query.k)
 
     results = []
     for i in I[0]:
-        if i < len(metadata):
+        if 0 <= i < len(metadata):
             results.append(metadata[i])
 
     return { "results": results }
