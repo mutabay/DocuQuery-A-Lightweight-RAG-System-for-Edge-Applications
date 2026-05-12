@@ -315,7 +315,3 @@ flowchart TD
 | Multi-file queries | Search across multiple uploaded documents |
 
 ---
-
-## License
-
-MIT
